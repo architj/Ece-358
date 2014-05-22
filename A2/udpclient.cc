@@ -80,7 +80,7 @@ int main (int argc, const char* argv[]) {
 
 	//sending to host
 	int len;
-	if ((len = sendto(s, requestBuffer, strlen(requestBuffer) + 1, 0,  cai->ai_addr, sizeof(struct sockaddr_in))) < strlen(requestBuffer) + 1) {
+	if ((len = sendto(s, requestBuffer, strlen(requestBuffer) + 1, 0, (const struct sockaddr*) &sa, sizeof(struct sockaddr_in))) < strlen(requestBuffer) + 1) {
 		cout<<"Send Failed. Sent Only " << len << " of " << strlen(requestBuffer) << endl;
 }
 
