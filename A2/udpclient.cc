@@ -17,25 +17,20 @@
 using namespace std;
 
 int main (int argc, const char* argv[]) {
+	//Check if correct number of arguments was provided
 	if (argc < 3) {
-		cout << "usage: " << argv[0] << " <server name/ip> <server port>"<<endl;
+		//output error and terminate
+		cout << "usage: " << argv[0] << " <host name/ip> <host port>"<<endl;
 		exit(0);
 	}
+
+	//obtain port number from argv
 	int portNumber = atoi(argv[2]);
 	string studentId = "";
 	string groupId = "";
 	
-	//Get Student ID from stdin
-	cin >> groupId;
-	if( groupId != "STOP") {
-		cin >> studentId;
-	}
-	
 	//construct address structs
-	struct sockaddr_in a, sa;
-	a.sin_family = AF_INET;
-	a.sin_port = 0;
-	a.sin_addr.s_addr = INADDR_ANY;
+	struct sockaddr_in sa;
 	sa.sin_family = AF_INET;
 
 	struct addrinfo *res, *cai, hints;
@@ -43,15 +38,15 @@ int main (int argc, const char* argv[]) {
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_DGRAM;
 
-	//get socket
-	int s = socket(AF_INET, SOCK_DGRAM, 0);
+	//create socket and obtain socket descriptor
+	int sockDscrptr = socket(AF_INET, SOCK_DGRAM, 0);
 
 	//get host address
-	cout<<"GETTING ADDRESS INFORMATION"<<endl;	
 	if (getaddrinfo(argv[1], NULL, &hints, &res) != 0) {
 		perror("getaddrinfo error");
 	}
-	
+
+	//find the correct addrinfo that is in the INET address family	
 	for (cai = res; cai != NULL; cai = cai->ai_next) {
 		if (cai->ai_family == AF_INET) {
 			printf("server ip: %s\n", inet_ntoa(((struct sockaddr_in *) (cai->ai_addr))->sin_addr));
@@ -62,37 +57,51 @@ int main (int argc, const char* argv[]) {
 
 	//assign port to sa. sa has the ip address already from the memcpy
 	sa.sin_port = htons(portNumber);	
-	
 
-	//construct Request
-	char requestBuffer[256], responseBuffer[256];
+	//construct Request and response buffers
+	char requestBuffer[256], responseBuffer[1000];
 
-	//if EOF, send STOP_SESSION
-	if(cin.eof()) {
-		cout << "EOF" << endl;
-		strcpy (requestBuffer, "STOP_SESSION");	
-	} else if (studentId == "STOP" || groupId == "STOP"){
-		strcpy (requestBuffer, "STOP");
-	} else {
-		stringstream ss;
-		ss << "GET " << groupId << " " << studentId;
-		string requestString = ss.str();
-		cout<< "\n REQUEST: " << requestString<<endl;
-		strcpy (requestBuffer, requestString.c_str());
+	//Loop until user inputs STOP
+	while(1) {
+		//Reset the buffers
+		memset(&requestBuffer, 0, sizeof(requestBuffer));
+		memset(&responseBuffer, 0, sizeof(responseBuffer));		
+
+		//Get Student ID and group id from stdin
+		cin >> groupId;
+		if( groupId != "STOP") {
+			cin >> studentId;
+		}
+
+		//if EOF, send STOP_SESSION
+		if(cin.eof()) {
+			cout << "EOF" << endl;
+			strcpy (requestBuffer, "STOP_SESSION");	
+		}
+		//if STOP received as input, send STOP 
+		else if (studentId == "STOP" || groupId == "STOP"){
+			strcpy (requestBuffer, "STOP");
+		}
+		//otherwise, send a GET request 
+		else {
+			stringstream ss;
+			ss << "GET " << groupId << " " << studentId;
+			string requestString = ss.str();
+			cout<< "\n REQUEST: " << requestString<<endl;
+			strcpy (requestBuffer, requestString.c_str());
+		}
+
+		//sending to host
+		int len;
+		if ((len = sendto(sockDscrptr, requestBuffer, strlen(requestBuffer) + 1, 0, (const struct sockaddr*) &sa, sizeof(sa))) < strlen(requestBuffer) + 1) {
+			cout<<"Send Failed. Sent Only " << len << " of " << strlen(requestBuffer) << endl;
 	}
 
-	cout << "Serv address structure IP: " << inet_ntoa(sa.sin_addr)<< " and port: " << sa.sin_port << endl;
-
-	//sending to host
-	int len;
-	if ((len = sendto(s, requestBuffer, strlen(requestBuffer) + 1, 0, (const struct sockaddr*) &sa, sizeof(sa))) < strlen(requestBuffer) + 1) {
-		cout<<"Send Failed. Sent Only " << len << " of " << strlen(requestBuffer) << endl;
-}
-
-	memset(responseBuffer, 0, 256);
-	cout<<"ABOUT TO RECEIVE: " <<endl;
-	recvfrom(s, responseBuffer, 256, 0, NULL, NULL);
-	cout<<"Client received: " << responseBuffer;
-	close (s);
+		cout<<"ABOUT TO RECEIVE: " <<endl;
+		//receive the servers response and output it
+		recvfrom(sockDscrptr, responseBuffer, 1000, 0, NULL, NULL);
+		cout<<"Client received: " << responseBuffer << endl;;
+	}
+	close (sockDscrptr);
 	return 0;
 }
