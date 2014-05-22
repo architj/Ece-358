@@ -34,8 +34,10 @@ int main (int argc, const char* argv[]) {
 	//construct address structs
 	struct sockaddr_in a, sa;
 	a.sin_family = AF_INET;
-	a.sin_port = htons(portNumber);
+	a.sin_port = 0;
 	a.sin_addr.s_addr = INADDR_ANY;
+	sa.sin_family = AF_INET;
+	sa.sin_port = htons(portNumber);
 
 	struct addrinfo *res, *cai, hints;
 	memset(&hints, 0, sizeof(hints));
