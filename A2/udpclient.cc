@@ -34,11 +34,9 @@ int main (int argc, const char* argv[]) {
 	//construct address structs
 	struct sockaddr_in a, sa;
 	a.sin_family = AF_INET;
-	a.sin_port = 0;
+	a.sin_port = portNumber;
 	a.sin_addr.s_addr = INADDR_ANY;
 
-	int portnum;
-	
 	struct addrinfo *res, *cai, hints;
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET;
@@ -85,6 +83,7 @@ int main (int argc, const char* argv[]) {
 }
 
 	memset(responseBuffer, 0, 256);
+	cout<<"ABOUT TO RECEIVE: " <<endl;
 	recvfrom(s, responseBuffer, 256, 0, NULL, NULL);
 	cout<<"Client received: " << responseBuffer;
 	close (s);
