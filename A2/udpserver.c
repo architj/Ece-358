@@ -46,22 +46,6 @@ int main (int argc, char* argv[] )
 		perror("socket");
 		exit(0);
 	}
-	else 
-	{
-		printf("Opened socket: %d\n", serverSocket);
-	}
-	
-	                  
-	memset(&hints, 0, sizeof(struct addrinfo));
-	hints.ai_family = AF_INET;
-	hints.ai_socktype = SOCK_DGRAM;
-	
-	s = getaddrinfo(argv[1], NULL, &hints, &result);
-	if(s!=0)
-	{
-		perror("getaddrinfo error");
-	}
-
 	
 	// define params for bind and use bind
 	struct sockaddr_in a;
@@ -83,16 +67,13 @@ int main (int argc, char* argv[] )
 		exit(0);
 	}
 
-	printf("Connecting to port %hu\n", ntohs(a.sin_port));
 
 	char ip[256];
 	inet_ntop(AF_INET, &(a.sin_addr), ip, 256);
-	printf( ip ); 
-	printf("\n");
-
-	// stdout server and port
+	printf( "%s %hu %hu\n", ip, ntohs(a.sin_port), a.sin_port );
 	
-	// stdin info on groups	
+	// stdin info on groups
+	
 
 	// Accept Commands:
 		// Get
@@ -103,9 +84,10 @@ int main (int argc, char* argv[] )
 	char getkey[4];
 	char stopkey[12];	
 	
+	memset(&a, 0, sizeof(struct sockaddr_in));
 	
-	{
-		if( recv(serverSocket, buf, 256, 0 ) <= 0 )
+	
+		if( recvfrom(serverSocket, buf, 256, 0, (struct sockaddr*)(&a), &sockLength ) > 0 )
 		{
  			printf( buf );
 			printf( "\n" );
@@ -114,7 +96,9 @@ int main (int argc, char* argv[] )
 		{
 			perror("error in recieving");
 		} 
-		/*memcpy(key, buf, 4);
+		
+	/*
+		memcpy(key, buf, 4);
 		
 		if( strcmp(getkey, "GET " )
 		{
@@ -128,7 +112,6 @@ int main (int argc, char* argv[] )
 		{
 			
 		}
-*/	
-	}
+	*/	
 	
 }
