@@ -14,19 +14,23 @@
 #include <sstream>
 #include <unistd.h>
 
+using namespace std;
+
 int main (int argc, const char* argv[]) {
 	if (argc < 3) {
-		std::cout << "usage: " << argv[0] << " <server name/ip> <server port>"<<std::endl;
+		cout << "usage: " << argv[0] << " <server name/ip> <server port>"<<endl;
 		exit(0);
 	}
 	int portNumber = atoi(argv[2]);
-	int studentId = 0;
-	int groupId = 0;
+	string studentId = "";
+	string groupId = "";
+	
 	//Get Student ID from stdin
-	std::cin >> groupId >> studentId;
-
-	//if EOF, send STOP_SESSION
-
+	cin >> groupId;
+	if( groupId != "STOP") {
+		cin >> studentId;
+	}
+	
 	//construct address structs
 	struct sockaddr_in a, sa;
 	a.sin_family = AF_INET;
@@ -44,7 +48,7 @@ int main (int argc, const char* argv[]) {
 	int s = socket(AF_INET, SOCK_DGRAM, 0);
 
 	//get host address
-	std::cout<<"GETTING ADDRESS INFORMATION"<<std::endl;	
+	cout<<"GETTING ADDRESS INFORMATION"<<endl;	
 	if (getaddrinfo(argv[1], NULL, &hints, &res) != 0) {
 		perror("getaddrinfo error");
 	}
@@ -58,22 +62,31 @@ int main (int argc, const char* argv[]) {
 	}
 
 	//construct Request
-	std::stringstream ss;
-	ss << "GET " << groupId << " " << studentId;
-	std::string requestString = ss.str();
-	std::cout<< "\n REQUEST: " << requestString<<std::endl;
 	char requestBuffer[256], responseBuffer[256];
-	strcpy (requestBuffer, requestString.c_str());
+
+	//if EOF, send STOP_SESSION
+	if(cin.eof()) {
+		cout << "EOF" << endl;
+		strcpy (requestBuffer, "STOP_SESSION");	
+	} else if (studentId == "STOP" || groupId == "STOP"){
+		strcpy (requestBuffer, "STOP");
+	} else {
+		stringstream ss;
+		ss << "GET " << groupId << " " << studentId;
+		string requestString = ss.str();
+		cout<< "\n REQUEST: " << requestString<<endl;
+		strcpy (requestBuffer, requestString.c_str());
+	}
 
 	//sending to host
 	int len;
 	if ((len = sendto(s, requestBuffer, strlen(requestBuffer) + 1, 0,  cai->ai_addr, sizeof(struct sockaddr_in))) < strlen(requestBuffer) + 1) {
-		std::cout<<"Send Failed. Sent Only " << len << " of " << strlen(requestBuffer) << std::endl;
+		cout<<"Send Failed. Sent Only " << len << " of " << strlen(requestBuffer) << endl;
 }
 
 	memset(responseBuffer, 0, 256);
 	recvfrom(s, responseBuffer, 256, 0, NULL, NULL);
-	std::cout<<"Client received: " << responseBuffer;
+	cout<<"Client received: " << responseBuffer;
 	close (s);
 	return 0;
 }
