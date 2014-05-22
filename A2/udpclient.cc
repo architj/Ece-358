@@ -37,7 +37,6 @@ int main (int argc, const char* argv[]) {
 	a.sin_port = 0;
 	a.sin_addr.s_addr = INADDR_ANY;
 	sa.sin_family = AF_INET;
-	sa.sin_port = htons(portNumber);
 
 	struct addrinfo *res, *cai, hints;
 	memset(&hints, 0, sizeof(hints));
@@ -61,6 +60,10 @@ int main (int argc, const char* argv[]) {
 		}
 	}
 
+	//assign port to sa. sa has the ip address already from the memcpy
+	sa.sin_port = htons(portNumber);	
+	
+
 	//construct Request
 	char requestBuffer[256], responseBuffer[256];
 
@@ -78,9 +81,11 @@ int main (int argc, const char* argv[]) {
 		strcpy (requestBuffer, requestString.c_str());
 	}
 
+	cout << "Serv address structure IP: " << inet_ntoa(sa.sin_addr)<< " and port: " << sa.sin_port << endl;
+
 	//sending to host
 	int len;
-	if ((len = sendto(s, requestBuffer, strlen(requestBuffer) + 1, 0, (const struct sockaddr*) &sa, sizeof(struct sockaddr_in))) < strlen(requestBuffer) + 1) {
+	if ((len = sendto(s, requestBuffer, strlen(requestBuffer) + 1, 0, (const struct sockaddr*) &sa, sizeof(sa))) < strlen(requestBuffer) + 1) {
 		cout<<"Send Failed. Sent Only " << len << " of " << strlen(requestBuffer) << endl;
 }
 
