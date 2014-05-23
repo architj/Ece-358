@@ -14,6 +14,7 @@
 #include <map>
 #include <signal.h>
 #include <sstream>
+#include <net/if.h>
 
 using namespace std;
 
@@ -49,6 +50,7 @@ int main (int argc, char* argv[] )
 		port = atoi((const char*)argv[1]);	
 	}
 
+
 	#if defined ( UDP )
 	// create a socket for UDP
 	if ((sockDscrptr = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
@@ -56,6 +58,7 @@ int main (int argc, char* argv[] )
 		perror("udp socket error");
 		exit(0);
 	}
+
 	#else
 	if ((sockDscrptr = socket(AF_INET, SOCK_STREAM, 0)) < 0)
 	{
@@ -68,10 +71,19 @@ int main (int argc, char* argv[] )
 	struct sockaddr_in a, client;
 	a.sin_family = AF_INET;
 	a.sin_addr.s_addr = htonl(INADDR_ANY);
+	if( port !=0 )
+	{
+		a.sin_port = htons(port);
+	}
+	else 
+	{
+		a.sin_port = htons(0);
+	}
+
 	socklen_t sockLength;
 	
 	
-	if ( port != 0 && bind (sockDscrptr, (const struct sockaddr *)(&a), sizeof (a)) < 0) {
+	if ( bind (sockDscrptr, (const struct sockaddr *)(&a), sizeof (a)) < 0) {
 		perror("bind");
 		exit(0);
 	}
@@ -84,10 +96,45 @@ int main (int argc, char* argv[] )
 		exit(0);
 	}
 
+	//get host address
+	struct ifaddrs *ifap;
+	
+	if (getifaddrs(&ifap) != 0)
+	{
+		perror("No interfaces found");
+	} 
+	
+	struct ifaddrs *temp;
+	char hostname[256];
+	//find the correct addrinfo that is in the INET address family
+	for (temp = ifap; temp != NULL; temp = temp->ifa_next) {
+		string interfaceName = string(temp->ifa_name);
+		if ( interfaceName.compare("eth0") == 0 && ( temp->ifa_flags & IFF_BROADCAST) && (( (struct sockaddr_in*)temp->ifa_addr)->sin_family == AF_INET  ))
+		 {
+			char ip[256];
+			inet_ntop(AF_INET, &(((struct sockaddr_in *)(temp->ifa_addr))->sin_addr), ip, 256 );
+			cout <<"Ip address: " <<  ip << endl;
+			struct sockaddr_in abc = *((struct sockaddr_in*) (temp->ifa_addr));
+			//((struct sockaddr_in*)(temp->ifa_addr))->sin_family = AF_INET;
+			abc.sin_family = AF_INET;
+			int errno = getnameinfo(((struct sockaddr*) &abc), sizeof(abc), hostname, sizeof(hostname), NULL, 0, 0);
+			if( errno != 0)
+			{
+				// failure
+				printf(gai_strerror(errno));
+				memcpy(hostname, ip, sizeof(ip) );
+			}
+			else {
+				cout << "Success" << endl; 
+			}
+			cout << "Hostname: " << hostname << endl;
+		}
+	}
 
 	char ip[256];
+	
 	inet_ntop(AF_INET, &(a.sin_addr), ip, 256);
-	cout << ip << " " << ntohs(a.sin_port) << endl;
+	cout << ip << " " << a.sin_port << " " <<  ntohs(a.sin_port) << endl;
 	
 	#if defined (TCP )
 	listen(sockDscrptr, 1024);
