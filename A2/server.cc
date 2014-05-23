@@ -11,6 +11,7 @@
 #include <arpa/inet.h>
 #include <iostream>
 #include <vector>
+#include <map>
 
 using namespace std;
 
@@ -33,10 +34,15 @@ struct group
 	student students[256];
 };
 
+int hashf( int g, int s)
+{
+	return 0.5 * (g + s) * (g + s + 1) + s;
+}
+
+
 
 int main (int argc, char* argv[] )
 {
-	
 	int serverSocket, port;
 
 	// grab port number
@@ -84,6 +90,7 @@ int main (int argc, char* argv[] )
 	States state = START;
 	int groupId = 0, studentId =0;
 	string studentName;
+	map< int, string > studentMap;
 	// stdin info on groups
 	string input;
 	while( getline(cin, input) && !cin.eof() )
@@ -108,6 +115,8 @@ int main (int argc, char* argv[] )
 				
 				// hash and store
 				cout << "Group Id: " << groupId << " Student Id: " << studentId << "Student Name: " << studentName << endl;
+				int hashNumber = hashf( groupId, studentId);
+				studentMap.insert(pair<int, string> (hashNumber, studentName) );
 			}
 			else 
 			{
@@ -123,16 +132,15 @@ int main (int argc, char* argv[] )
 		// Stop_session
 		// Stop
 
-	char buf[256];
-	char getkey[4];
-	char stopkey[12];	
+	char buf[256];	
 	
 	memset(&a, 0, sizeof(struct sockaddr_in));
 	
 	
 		if( recvfrom(serverSocket, buf, 256, 0, (struct sockaddr*)(&a), &sockLength ) > 0 )
 		{
- 			cout << buf << endl;
+ 			string req = string(buf);
+			unsigned pos1 = req.find(" ");
 			
 		}
 		else
