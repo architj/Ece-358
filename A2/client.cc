@@ -69,7 +69,7 @@ int main (int argc, const char* argv[]) {
 	#endif
 
 	//construct Request and response buffers
-	char requestBuffer[256], responseBuffer[1000];
+	char requestBuffer[1000], responseBuffer[1000];
 
 	//Loop until user inputs STOP
 	while(1) {
@@ -103,6 +103,7 @@ int main (int argc, const char* argv[]) {
 
 		//sending to host
 		int len;
+			cout<<"abouttosend"<<endl;		
 		if ((len = sendto(sockDscrptr, requestBuffer, strlen(requestBuffer) + 1, 0, (const struct sockaddr*) &sa, sizeof(sa))) < strlen(requestBuffer) + 1) {
 			cout<<"Send Failed. Sent Only " << len << " of " << strlen(requestBuffer) << endl;
 	}
