@@ -70,12 +70,14 @@ int main (int argc, const char* argv[]) {
 
 	//construct Request and response buffers
 	char requestBuffer[1000], responseBuffer[1000];
+	
+	bool isGetRequest = false;
 
 	//Loop until user inputs STOP
 	while(1) {
-		//Reset the buffers
+		//Reset the buffers and state variables
 		memset(&requestBuffer, 0, sizeof(requestBuffer));
-		memset(&responseBuffer, 0, sizeof(responseBuffer));		
+		memset(&responseBuffer, 0, sizeof(responseBuffer));				isGetRequest = false;
 
 		//Get Student ID and group id from stdin
 		cin >> groupId;
@@ -99,6 +101,7 @@ int main (int argc, const char* argv[]) {
 			string requestString = ss.str();
 			cout<< "\n REQUEST: " << requestString<<endl;
 			strcpy (requestBuffer, requestString.c_str());
+			isGetRequest = true;
 		}
 
 		//sending to host
@@ -108,10 +111,12 @@ int main (int argc, const char* argv[]) {
 			cout<<"Send Failed. Sent Only " << len << " of " << strlen(requestBuffer) << endl;
 	}
 
-		cout<<"ABOUT TO RECEIVE: " <<endl;
-		//receive the servers response and output it
-		recvfrom(sockDscrptr, responseBuffer, 1000, 0, NULL, NULL);
-		cout<<"Client received: " << responseBuffer << endl;;
+		if(isGetRequest) {
+			cout<<"ABOUT TO RECEIVE: " <<endl;
+			//receive the servers response and output it
+			recvfrom(sockDscrptr, responseBuffer, 1000, 0, NULL, NULL);
+			cout<<"Client received: " << responseBuffer << endl;
+		}
 	}
 	close (sockDscrptr);
 	return 0;
