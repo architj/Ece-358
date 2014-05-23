@@ -37,7 +37,7 @@ struct group
 
 int hashf( int g, int s)
 {
-	return 0.5 * (g + s) * (g + s + 1) + s;
+	return (int)(0.5 * (g + s) * (g + s + 1) + s);
 }
 
 int serverSocket;
@@ -60,7 +60,6 @@ int main (int argc, char* argv[] )
 	// grab port number
 	if(argc < 2)
 	{
-		// find a port that is free
 		port = 0;
 	}
 	else
@@ -143,56 +142,69 @@ int main (int argc, char* argv[] )
 	// Accept Commands:
 
 	char buf[256];	
-	
+	int pid = 0;
+	cout << "Parent PID: " << getpid() << endl;	
 	memset(&client, 0, sizeof(struct sockaddr_in));
 	while(1)
 	{
 		if( recvfrom(serverSocket, buf, 256, 0, (struct sockaddr*)(&client), &sockLength ) > 0 )
 		{
- 			cout << "Request: " << buf << endl;
-			string req = string(buf);
-			if( req.find("GET")!= string::npos )
+ 			pid = fork();
+			if(pid ==0 )
 			{
-				unsigned pos = req.find(" ");
-				string sub = req.substr(pos + 1);
-				cout << sub << endl;
-				pos = sub.find(" ");
-				string id = sub.substr(0, pos);
-				int groupId = atoi( id.c_str() );
-				cout << "groupId" << groupId << endl;
-				id = sub.substr( pos+1 );
-				int studentId = atoi( id.c_str() );
-				cout << "studentId" << studentId << endl;				
-
-				// hash and find
-				int hashed = hashf( groupId, studentId );
-				map<int, string>::iterator it = studentMap.find(hashed);
-				if( it != studentMap.end() )
+				cout << "Request: " << buf << endl;
+				string req = string(buf);
+				if( req.find("GET")!= string::npos )
 				{
-					string studentName = it->second;
-					cout << "Response: " << studentName << endl;
-					const char* response =  studentName.c_str();
-					int len;
-					if((len = sendto(serverSocket, response, strlen(response)+1, 0, (const struct sockaddr*) &client, sizeof(client))) < strlen(response) + 1)
+					unsigned pos = req.find(" ");
+					string sub = req.substr(pos + 1);
+					cout << sub << endl;
+					pos = sub.find(" ");
+					string id = sub.substr(0, pos);
+					int groupId = atoi( id.c_str() );
+					cout << "groupId" << groupId << endl;
+					id = sub.substr( pos+1 );
+					int studentId = atoi( id.c_str() );
+					cout << "studentId" << studentId << endl;				
+
+					// hash and find
+					int hashed = hashf( groupId, studentId );
+					map<int, string>::iterator it = studentMap.find(hashed);
+					if( it != studentMap.end() )
 					{
-						cout << "Send failed. Sent only " << len << " of " << strlen(response) << endl;
+						string studentName = it->second;
+						cout << "Response: " << studentName << endl;
+						const char* response =  studentName.c_str();
+						int len;
+						if((len = sendto(serverSocket, response, strlen(response)+1, 0, (const struct sockaddr*) &client, sizeof(client))) < strlen(response) + 1)
+						{
+							cout << "Send failed. Sent only " << len << " of " << strlen(response) << endl;
+						}
+					}
+					else 
+					{
+						stringstream ss;
+						ss << "ERROR_" << groupId << "_" << studentId;
+						const char* response = ss.c_str();   
+						int len;
+						if((len = sendto(serverSocket, response, strlen(response) +1, 0, (const struct sockaddr*) &client, sizeof(client))) < strlen(response) + 1)
+						{
+							cout << " Send failed." << endl;
+						}
 					}
 				}
-				else 
+				else if( req.compare("STOP_SESSION") ==0 )
 				{
-					perror("Check group number and Student number");
+				
 				}
-			}
-			else if( req.compare("STOP_SESSION") ==0 )
-			{
+				else if( req.compare("STOP") == 0 )
+				{
+					int parent = getppid();
+					cout << "PID: " << parent << endl;
+					kill(parent, SIGKILL);
+				}
 				_exit(0);
 			}
-			else if( req.compare("STOP") == 0 )
-			{
-				int parent = getppid();
-				kill(parent, SIGKILL);
-			}
-			
 		}
 		else
 		{
