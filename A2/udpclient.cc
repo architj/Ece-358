@@ -38,8 +38,13 @@ int main (int argc, const char* argv[]) {
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_DGRAM;
 
-	//create socket and obtain socket descriptor
+	#if defined ( UDP )	
+	//create UDP socket and obtain socket descriptor
 	int sockDscrptr = socket(AF_INET, SOCK_DGRAM, 0);
+	#else
+	//create TCP socket and obtain socket descriptor
+	int sockDscrptr = socket(AF_INET, SOCK_STREAM, 0);
+	#endif
 
 	//get host address
 	if (getaddrinfo(argv[1], NULL, &hints, &res) != 0) {
@@ -57,6 +62,10 @@ int main (int argc, const char* argv[]) {
 
 	//assign port to sa. sa has the ip address already from the memcpy
 	sa.sin_port = htons(portNumber);	
+
+	#if defined ( TCP )
+	connect(sockDscrptr, (struct sockaddr *) &sa, sizeof(sa));
+	#endif
 
 	//construct Request and response buffers
 	char requestBuffer[256], responseBuffer[1000];
