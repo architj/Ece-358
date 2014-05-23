@@ -67,12 +67,20 @@ int main (int argc, char* argv[] )
 		port = atoi((const char*)argv[1]);	
 	}
 
+	#if defined ( UDP )
 	// create a socket for UDP
 	if ((serverSocket = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
 	{
-		perror("socket");
+		perror("udp socket error");
 		exit(0);
 	}
+	#else
+	if ((serverSocket = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+	{
+		perror("tcp socket error");
+		exit(0);
+	}
+	#endif
 	
 	// define params for bind and bind the socket and the port
 	struct sockaddr_in a, client;
