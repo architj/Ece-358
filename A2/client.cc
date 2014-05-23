@@ -33,7 +33,7 @@ int main (int argc, const char* argv[]) {
 	struct sockaddr_in sa;
 	sa.sin_family = AF_INET;
 
-	struct addrinfo *res, *cai, hints;
+	struct addrinfo *res, *temp, hints;
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET;
 
@@ -53,10 +53,10 @@ int main (int argc, const char* argv[]) {
 	}
 
 	//find the correct addrinfo that is in the INET address family	
-	for (cai = res; cai != NULL; cai = cai->ai_next) {
-		if (cai->ai_family == AF_INET) {
-			printf("server ip: %s\n", inet_ntoa(((struct sockaddr_in *) (cai->ai_addr))->sin_addr));
-			memcpy (&sa, cai->ai_addr, sizeof(struct sockaddr_in));
+	for (temp = res; temp != NULL; temp = temp->ai_next) {
+		if (temp->ai_family == AF_INET) {
+			printf("server ip: %s\n", inet_ntoa(((struct sockaddr_in *) (temp->ai_addr))->sin_addr));
+			memcpy (&sa, temp->ai_addr, sizeof(struct sockaddr_in));
 			break;
 		}
 	}
