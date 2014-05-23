@@ -75,10 +75,10 @@ int main (int argc, char* argv[] )
 	}
 	
 	// define params for bind and bind the socket and the port
-	struct sockaddr_in a;
+	struct sockaddr_in a, client;
 	a.sin_family = AF_INET;
 	a.sin_port = htons(port);
-	a.sin_addr.s_addr = INADDR_ANY;
+	a.sin_addr.s_addr = htonl(INADDR_ANY);
 	int addrlen = sizeof(struct sockaddr_in);
 	socklen_t sockLength;
 
@@ -144,33 +144,36 @@ int main (int argc, char* argv[] )
 
 	char buf[256];	
 	
-	memset(&a, 0, sizeof(struct sockaddr_in));
-	
+	memset(&client, 0, sizeof(struct sockaddr_in));
 	while(1)
 	{
-		if( recvfrom(serverSocket, buf, 256, 0, (struct sockaddr*)(&a), &sockLength ) > 0 )
+		if( recvfrom(serverSocket, buf, 256, 0, (struct sockaddr*)(&client), &sockLength ) > 0 )
 		{
- 			string req = string(buf);
+ 			cout << "Request: " << buf << endl;
+			string req = string(buf);
 			if( req.find("GET")!= string::npos )
 			{
 				unsigned pos = req.find(" ");
 				string sub = req.substr(pos + 1);
+				cout << sub << endl;
 				pos = sub.find(" ");
-				string id = input.substr(0, pos);
+				string id = sub.substr(0, pos);
 				int groupId = atoi( id.c_str() );
-				id = input.substr( pos+1 );
+				cout << "groupId" << groupId << endl;
+				id = sub.substr( pos+1 );
 				int studentId = atoi( id.c_str() );
-				
+				cout << "studentId" << studentId << endl;				
+
 				// hash and find
 				int hashed = hashf( groupId, studentId );
 				map<int, string>::iterator it = studentMap.find(hashed);
 				if( it != studentMap.end() )
 				{
 					string studentName = it->second;
-					cout << studentName << endl;
+					cout << "Response: " << studentName << endl;
 					const char* response =  studentName.c_str();
 					int len;
-					if((len = sendto(serverSocket, response, strlen(response)+1, 0, (const struct sockaddr*) &a, sizeof(a))) < strlen(response) + 1)
+					if((len = sendto(serverSocket, response, strlen(response)+1, 0, (const struct sockaddr*) &client, sizeof(client))) < strlen(response) + 1)
 					{
 						cout << "Send failed. Sent only " << len << " of " << strlen(response) << endl;
 					}
