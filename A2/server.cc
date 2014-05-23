@@ -16,25 +16,6 @@
 
 using namespace std;
 
-enum States
-{
-	START = 0,
-	GROUP,
-	STUDENT
-};
-
-struct student
-{
-	int studentno;
-	char name[256];
-};
-
-struct group
-{
-	int number;
-	student students[256];
-};
-
 int hashf( int g, int s)
 {
 	return (int)(0.5 * (g + s) * (g + s + 1) + s);
@@ -106,7 +87,6 @@ int main (int argc, char* argv[] )
 	inet_ntop(AF_INET, &(a.sin_addr), ip, 256);
 	cout << ip << " " << ntohs(a.sin_port) << endl;
 
-	States state = START;
 	int groupId = 0, studentId =0;
 	string studentName;
 	map< int, string > studentMap;
