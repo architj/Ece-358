@@ -36,14 +36,15 @@ int main (int argc, const char* argv[]) {
 	struct addrinfo *res, *cai, hints;
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET;
-	hints.ai_socktype = SOCK_DGRAM;
 
 	#if defined ( UDP )	
 	//create UDP socket and obtain socket descriptor
 	int sockDscrptr = socket(AF_INET, SOCK_DGRAM, 0);
+	hints.ai_socktype = SOCK_DGRAM;
 	#else
 	//create TCP socket and obtain socket descriptor
 	int sockDscrptr = socket(AF_INET, SOCK_STREAM, 0);
+	hints.ai_socktype = SOCK_STREAM;
 	#endif
 
 	//get host address

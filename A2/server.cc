@@ -79,10 +79,9 @@ int main (int argc, char* argv[] )
 	a.sin_family = AF_INET;
 	a.sin_port = htons(port);
 	a.sin_addr.s_addr = htonl(INADDR_ANY);
-	int addrlen = sizeof(struct sockaddr_in);
 	socklen_t sockLength;
 
-	if (bind (serverSocket, (const struct sockaddr *)(&a), sizeof(struct sockaddr_in)) < 0) {
+	if (bind (serverSocket, (const struct sockaddr *)(&a), sizeof (a)) < 0) {
 		perror("bind");
 		exit(0);
 	}
