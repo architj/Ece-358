@@ -13,6 +13,7 @@
 #include <vector>
 #include <map>
 #include <signal.h>
+#include <sstream>
 
 using namespace std;
 
@@ -21,11 +22,11 @@ int hashf( int g, int s)
 	return (int)(0.5 * (g + s) * (g + s + 1) + s);
 }
 
-int serverSocket;
+int sockDscrptr;
 
 void term( int signum )
 {
-	close(serverSocket);
+	close(sockDscrptr);
 	exit(0);
 }
 
@@ -50,13 +51,13 @@ int main (int argc, char* argv[] )
 
 	#if defined ( UDP )
 	// create a socket for UDP
-	if ((serverSocket = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+	if ((sockDscrptr = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
 	{
 		perror("udp socket error");
 		exit(0);
 	}
 	#else
-	if ((serverSocket = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+	if ((sockDscrptr = socket(AF_INET, SOCK_STREAM, 0)) < 0)
 	{
 		perror("tcp socket error");
 		exit(0);
@@ -66,17 +67,18 @@ int main (int argc, char* argv[] )
 	// define params for bind and bind the socket and the port
 	struct sockaddr_in a, client;
 	a.sin_family = AF_INET;
-	a.sin_port = htons(port);
 	a.sin_addr.s_addr = htonl(INADDR_ANY);
 	socklen_t sockLength;
-
-	if (bind (serverSocket, (const struct sockaddr *)(&a), sizeof (a)) < 0) {
+	
+	
+	if ( port != 0 && bind (sockDscrptr, (const struct sockaddr *)(&a), sizeof (a)) < 0) {
 		perror("bind");
 		exit(0);
 	}
 	
+	
 	// Get IP and port number
-	if( getsockname(serverSocket, (struct sockaddr *)(&a), &sockLength) < 0) 
+	if( getsockname(sockDscrptr, (struct sockaddr *)(&a), &sockLength) < 0) 
 	{
 		perror("getsockname");
 		exit(0);
@@ -86,7 +88,12 @@ int main (int argc, char* argv[] )
 	char ip[256];
 	inet_ntop(AF_INET, &(a.sin_addr), ip, 256);
 	cout << ip << " " << ntohs(a.sin_port) << endl;
-
+	
+	#if defined (TCP )
+	listen(sockDscrptr, 1024);
+	#endif
+	
+	
 	int groupId = 0, studentId =0;
 	string studentName;
 	map< int, string > studentMap;
@@ -135,68 +142,85 @@ int main (int argc, char* argv[] )
 	memset(&client, 0, sizeof(struct sockaddr_in));
 	while(1)
 	{
-		if( recvfrom(serverSocket, buf, 256, 0, (struct sockaddr*)(&client), &sockLength ) > 0 )
+		#if defined( TCP )
+		sockDscrptr = accept( sockDscrptr, (struct sockaddr*)(&client), &sockLength );
+		pid = fork();
+		while(1)
+		#endif
 		{
- 			pid = fork();
-			if(pid ==0 )
+			if( recvfrom(sockDscrptr, buf, 256, 0, (struct sockaddr*)(&client), &sockLength ) > 0 )
 			{
-				cout << "Request: " << buf << endl;
-				string req = string(buf);
-				if( req.find("GET")!= string::npos )
+				#if defined( UDP )
+				pid = fork();
+				if(pid ==0 )
+				#endif
 				{
-					unsigned pos = req.find(" ");
-					string sub = req.substr(pos + 1);
-					cout << sub << endl;
-					pos = sub.find(" ");
-					string id = sub.substr(0, pos);
-					int groupId = atoi( id.c_str() );
-					cout << "groupId" << groupId << endl;
-					id = sub.substr( pos+1 );
-					int studentId = atoi( id.c_str() );
-					cout << "studentId" << studentId << endl;				
+					cout << "Request: " << buf << endl;
+					string req = string(buf);
+					if( req.find("GET")!= string::npos )
+					{
+						unsigned pos = req.find(" ");
+						string sub = req.substr(pos + 1);
+						cout << sub << endl;
+						pos = sub.find(" ");
+						string id = sub.substr(0, pos);
+						int groupId = atoi( id.c_str() );
+						cout << "groupId" << groupId << endl;
+						id = sub.substr( pos+1 );
+						int studentId = atoi( id.c_str() );
+						cout << "studentId" << studentId << endl;				
 
-					// hash and find
-					int hashed = hashf( groupId, studentId );
-					map<int, string>::iterator it = studentMap.find(hashed);
-					if( it != studentMap.end() )
-					{
-						string studentName = it->second;
-						cout << "Response: " << studentName << endl;
-						const char* response =  studentName.c_str();
-						int len;
-						if((len = sendto(serverSocket, response, strlen(response)+1, 0, (const struct sockaddr*) &client, sizeof(client))) < strlen(response) + 1)
+						// hash and find
+						int hashed = hashf( groupId, studentId );
+						map<int, string>::iterator it = studentMap.find(hashed);
+						if( it != studentMap.end() )
 						{
-							cout << "Send failed. Sent only " << len << " of " << strlen(response) << endl;
+							string studentName = it->second;
+							cout << "Response: " << studentName << endl;
+							const char* response =  studentName.c_str();
+							int len;
+							if((len = sendto(sockDscrptr, response, strlen(response)+1, 0, (const struct sockaddr*) &client, sizeof(client))) < strlen(response) + 1)
+							{
+								cout << "Send failed. Sent only " << len << " of " << strlen(response) << endl;
+							}
+						}
+						else 
+						{
+							stringstream ss;
+							ss << "ERROR_" << groupId << "_" << studentId;
+							const char* response = ss.str().c_str();   
+							int len;
+							if((len = sendto(sockDscrptr, response, strlen(response) +1, 0, (const struct sockaddr*) &client, sizeof(client))) < strlen(response) + 1)
+							{
+								cout << " Send failed." << endl;
+							}
 						}
 					}
-					else 
+					else if( req.compare("STOP_SESSION") ==0 )
 					{
-						stringstream ss;
-						ss << "ERROR_" << groupId << "_" << studentId;
-						const char* response = ss.c_str();   
-						int len;
-						if((len = sendto(serverSocket, response, strlen(response) +1, 0, (const struct sockaddr*) &client, sizeof(client))) < strlen(response) + 1)
-						{
-							cout << " Send failed." << endl;
-						}
+						#if defined( TCP )
+						close(sockDscrptr);
+						#endif
 					}
+					else if( req.compare("STOP") == 0 )
+					{
+						#if defined( TCP )
+						close(sockDscrptr);
+						#endif
+						int parent = getppid();
+						cout << "PID: " << parent << endl;
+						kill(parent, SIGKILL);
+					}
+	
+					#if defined( UDP )
+					_exit(0);
+					#endif
 				}
-				else if( req.compare("STOP_SESSION") ==0 )
-				{
-				
-				}
-				else if( req.compare("STOP") == 0 )
-				{
-					int parent = getppid();
-					cout << "PID: " << parent << endl;
-					kill(parent, SIGKILL);
-				}
-				_exit(0);
 			}
-		}
-		else
-		{
-			perror("error in recieving");
+			else
+			{
+				perror("error in recieving");
+			}
 		} 
 		
 	}	
