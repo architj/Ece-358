@@ -60,6 +60,7 @@ int main (int argc, char* argv[] )
 	// grab port number
 	if(argc < 2)
 	{
+		// find a port that is free
 		port = 0;
 	}
 	else
