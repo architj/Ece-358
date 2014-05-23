@@ -12,6 +12,7 @@
 #include <iostream>
 #include <vector>
 #include <map>
+#include <signal.h>
 
 using namespace std;
 
@@ -39,12 +40,23 @@ int hashf( int g, int s)
 	return 0.5 * (g + s) * (g + s + 1) + s;
 }
 
+int serverSocket;
 
+void term( int signum )
+{
+	close(serverSocket);
+	exit(0);
+}
 
 int main (int argc, char* argv[] )
 {
-	int serverSocket, port;
-
+	struct sigaction action;
+	memset(&action, 0, sizeof(struct sigaction) );
+	action.sa_handler = term;
+	sigaction(SIGTERM, &action, NULL);
+	
+	int port;
+	
 	// grab port number
 	if(argc < 2)
 	{
@@ -116,7 +128,7 @@ int main (int argc, char* argv[] )
 				// hash and store
 				cout << "Group Id: " << groupId << " Student Id: " << studentId << "Student Name: " << studentName << endl;
 				int hashNumber = hashf( groupId, studentId);
-				studentMap.insert(pair<int, string> (hashNumber, studentName) );
+				studentMap[hashNumber] = studentName;
 			}
 			else 
 			{
@@ -127,20 +139,56 @@ int main (int argc, char* argv[] )
 	}
 
 	cout << "All input over" << endl;	
+	
 	// Accept Commands:
-		// Get
-		// Stop_session
-		// Stop
 
 	char buf[256];	
 	
 	memset(&a, 0, sizeof(struct sockaddr_in));
 	
-	
+	while(1)
+	{
 		if( recvfrom(serverSocket, buf, 256, 0, (struct sockaddr*)(&a), &sockLength ) > 0 )
 		{
  			string req = string(buf);
-			unsigned pos1 = req.find(" ");
+			if( req.find("GET")!= string::npos )
+			{
+				unsigned pos = req.find(" ");
+				string sub = req.substr(pos + 1);
+				pos = sub.find(" ");
+				string id = input.substr(0, pos);
+				int groupId = atoi( id.c_str() );
+				id = input.substr( pos+1 );
+				int studentId = atoi( id.c_str() );
+				
+				// hash and find
+				int hashed = hashf( groupId, studentId );
+				map<int, string>::iterator it = studentMap.find(hashed);
+				if( it != studentMap.end() )
+				{
+					string studentName = it->second;
+					cout << studentName << endl;
+					const char* response =  studentName.c_str();
+					int len;
+					if((len = sendto(serverSocket, response, strlen(response)+1, 0, (const struct sockaddr*) &a, sizeof(a))) < strlen(response) + 1)
+					{
+						cout << "Send failed. Sent only " << len << " of " << strlen(response) << endl;
+					}
+				}
+				else 
+				{
+					perror("Check group number and Student number");
+				}
+			}
+			else if( req.compare("STOP_SESSION") ==0 )
+			{
+				_exit(0);
+			}
+			else if( req.compare("STOP") == 0 )
+			{
+				int parent = getppid();
+				kill(parent, SIGKILL);
+			}
 			
 		}
 		else
@@ -148,21 +196,5 @@ int main (int argc, char* argv[] )
 			perror("error in recieving");
 		} 
 		
-	/*
-		memcpy(key, buf, 4);
-		
-		if( strcmp(getkey, "GET " )
-		{
-			
-		}
-		else if( strcmp(stopkey, "STOP" )
-		{
-			
-		}
-		else if( strcmp(stopkey, "STOP_SESSION" )
-		{
-			
-		}
-	*/	
-	
+	}	
 }
