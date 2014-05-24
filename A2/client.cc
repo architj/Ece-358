@@ -55,7 +55,6 @@ int main (int argc, const char* argv[]) {
 	//find the correct addrinfo that is in the INET address family	
 	for (temp = res; temp != NULL; temp = temp->ai_next) {
 		if (temp->ai_family == AF_INET) {
-			printf("server ip: %s\n", inet_ntoa(((struct sockaddr_in *) (temp->ai_addr))->sin_addr));
 			memcpy (&sa, temp->ai_addr, sizeof(struct sockaddr_in));
 			break;
 		}
