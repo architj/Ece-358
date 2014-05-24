@@ -88,7 +88,6 @@ int main (int argc, const char* argv[]) {
 
 		//if EOF, send STOP_SESSION
 		if(cin.eof()) {
-			cout << "EOF" << endl;
 			strcpy (requestBuffer, "STOP_SESSION");	
 		}
 		//if STOP received as input, send STOP 
@@ -100,28 +99,27 @@ int main (int argc, const char* argv[]) {
 			stringstream ss;
 			ss << "GET " << groupId << " " << studentId;
 			string requestString = ss.str();
-			cout<< "\n REQUEST: " << requestString<<endl;
 			strcpy (requestBuffer, requestString.c_str());
 			isGetRequest = true;
 		}
 
 		//sending to host
 		int len;
-			cout<<"abouttosend "<< requestBuffer <<endl;		
 		if ((len = sendto(sockDscrptr, requestBuffer, strlen(requestBuffer) , 0, (const struct sockaddr*) &sa, sizeof(sa))) < strlen(requestBuffer)) {
 			cout<<"Send Failed. Sent Only " << len << " of " << strlen(requestBuffer) << endl;
-	}
+		}
 
+		//Only receive if a GET was sent
 		if(isGetRequest) {
-			cout<<"ABOUT TO RECEIVE: " <<endl;
 			//receive the servers response and output it
 			recvfrom(sockDscrptr, responseBuffer, 1000, 0, NULL, NULL);
-			cout<<"Client received: " << responseBuffer << endl;
+			cout<< responseBuffer << endl;
 		 }
 		else {
 			break;
 		}
 	}
+	//Close socket
 	close (sockDscrptr);
 	return 0;
 }
