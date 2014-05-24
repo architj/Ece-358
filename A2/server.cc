@@ -27,6 +27,8 @@ int sockDscrptr;
 
 void term( int signum )
 {
+	
+	shutdown( sockDscrptr, SHUT_RDWR );
 	close(sockDscrptr);
 	exit(0);
 }
@@ -37,7 +39,6 @@ int main (int argc, char* argv[] )
 	memset(&action, 0, sizeof(struct sigaction) );
 	action.sa_handler = term;
 	sigaction(SIGTERM, &action, NULL);
-	
 	int port;
 	
 	// grab port number
@@ -113,28 +114,20 @@ int main (int argc, char* argv[] )
 		 {
 			char ip[256];
 			inet_ntop(AF_INET, &(((struct sockaddr_in *)(temp->ifa_addr))->sin_addr), ip, 256 );
-			cout <<"Ip address: " <<  ip << endl;
-			struct sockaddr_in abc = *((struct sockaddr_in*) (temp->ifa_addr));
-			//((struct sockaddr_in*)(temp->ifa_addr))->sin_family = AF_INET;
-			abc.sin_family = AF_INET;
-			int errno = getnameinfo(((struct sockaddr*) &abc), sizeof(abc), hostname, sizeof(hostname), NULL, 0, 0);
+			struct sockaddr_in ifaSockAddr = *((struct sockaddr_in*) (temp->ifa_addr));
+			ifaSockAddr.sin_family = AF_INET;
+			int errno = getnameinfo(((struct sockaddr*) &ifaSockAddr), sizeof(ifaSockAddr), hostname, sizeof(hostname), NULL, 0, 0);
 			if( errno != 0)
 			{
 				// failure
 				printf(gai_strerror(errno));
 				memcpy(hostname, ip, sizeof(ip) );
 			}
-			else {
-				cout << "Success" << endl; 
-			}
-			cout << "Hostname: " << hostname << endl;
+			break;
 		}
 	}
-
-	char ip[256];
 	
-	inet_ntop(AF_INET, &(a.sin_addr), ip, 256);
-	cout << ip << " " << a.sin_port << " " <<  ntohs(a.sin_port) << endl;
+	cout << hostname <<  " " <<  ntohs(a.sin_port) << endl;
 	
 	#if defined (TCP )
 	listen(sockDscrptr, 1024);
@@ -167,7 +160,6 @@ int main (int argc, char* argv[] )
 				studentName = input.substr( pos+1 );
 				
 				// hash and store
-				cout << "Group Id: " << groupId << " Student Id: " << studentId << "Student Name: " << studentName << endl;
 				int hashNumber = hashf( groupId, studentId);
 				studentMap[hashNumber] = studentName;
 			}
@@ -179,43 +171,39 @@ int main (int argc, char* argv[] )
 		
 	}
 
-	cout << "All input over" << endl;	
 	
 	// Accept Commands:
 
 	char buf[256];	
 	int pid = 0;
-	cout << "Parent PID: " << getpid() << endl;	
 	memset(&client, 0, sizeof(struct sockaddr_in));
+	int childSockDscrptr = sockDscrptr;		// for UDP, every child process uses the same socket
 	while(1)
 	{
 		#if defined( TCP )
-		sockDscrptr = accept( sockDscrptr, (struct sockaddr*)(&client), &sockLength );
+		childSockDscrptr = accept( sockDscrptr, (struct sockaddr*)(&client), &sockLength );
 		pid = fork();
-		while(1)
+		while(pid == 0)
 		#endif
 		{
-			if( recvfrom(sockDscrptr, buf, 256, 0, (struct sockaddr*)(&client), &sockLength ) > 0 )
+			memset( &buf, 0, sizeof(buf) );
+			if( int errno = recvfrom(childSockDscrptr, buf, 256, 0, (struct sockaddr*)(&client), &sockLength ) > 0 )
 			{
 				#if defined( UDP )
 				pid = fork();
 				if(pid ==0 )
 				#endif
 				{
-					cout << "Request: " << buf << endl;
 					string req = string(buf);
 					if( req.find("GET")!= string::npos )
 					{
 						unsigned pos = req.find(" ");
 						string sub = req.substr(pos + 1);
-						cout << sub << endl;
 						pos = sub.find(" ");
 						string id = sub.substr(0, pos);
 						int groupId = atoi( id.c_str() );
-						cout << "groupId" << groupId << endl;
 						id = sub.substr( pos+1 );
 						int studentId = atoi( id.c_str() );
-						cout << "studentId" << studentId << endl;				
 
 						// hash and find
 						int hashed = hashf( groupId, studentId );
@@ -223,10 +211,9 @@ int main (int argc, char* argv[] )
 						if( it != studentMap.end() )
 						{
 							string studentName = it->second;
-							cout << "Response: " << studentName << endl;
 							const char* response =  studentName.c_str();
 							int len;
-							if((len = sendto(sockDscrptr, response, strlen(response)+1, 0, (const struct sockaddr*) &client, sizeof(client))) < strlen(response) + 1)
+							if((len = sendto(childSockDscrptr, response, strlen(response), 0, (const struct sockaddr*) &client, sizeof(client))) < strlen(response) )	
 							{
 								cout << "Send failed. Sent only " << len << " of " << strlen(response) << endl;
 							}
@@ -237,36 +224,34 @@ int main (int argc, char* argv[] )
 							ss << "ERROR_" << groupId << "_" << studentId;
 							const char* response = ss.str().c_str();   
 							int len;
-							if((len = sendto(sockDscrptr, response, strlen(response) +1, 0, (const struct sockaddr*) &client, sizeof(client))) < strlen(response) + 1)
+							if((len = sendto(childSockDscrptr, response, strlen(response) , 0, (const struct sockaddr*) &client, sizeof(client))) < strlen(response) )
 							{
 								cout << " Send failed." << endl;
 							}
 						}
+						
+						#if defined( UDP )
+						_exit(0);
+						#endif
 					}
 					else if( req.compare("STOP_SESSION") ==0 )
 					{
 						#if defined( TCP )
-						close(sockDscrptr);
-						#endif
+						close(childSockDscrptr);
+						#endif	
+						_exit(0);
 					}
 					else if( req.compare("STOP") == 0 )
 					{
 						#if defined( TCP )
-						close(sockDscrptr);
+						close(childSockDscrptr);
 						#endif
 						int parent = getppid();
-						cout << "PID: " << parent << endl;
-						kill(parent, SIGKILL);
+						kill(parent, SIGTERM);
+						_exit(0);
 					}
 	
-					#if defined( UDP )
-					_exit(0);
-					#endif
 				}
-			}
-			else
-			{
-				perror("error in recieving");
 			}
 		} 
 		

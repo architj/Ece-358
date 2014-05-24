@@ -77,7 +77,8 @@ int main (int argc, const char* argv[]) {
 	while(1) {
 		//Reset the buffers and state variables
 		memset(&requestBuffer, 0, sizeof(requestBuffer));
-		memset(&responseBuffer, 0, sizeof(responseBuffer));				isGetRequest = false;
+		memset(&responseBuffer, 0, sizeof(responseBuffer));				
+		isGetRequest = false;
 
 		//Get Student ID and group id from stdin
 		cin >> groupId;
@@ -106,8 +107,8 @@ int main (int argc, const char* argv[]) {
 
 		//sending to host
 		int len;
-			cout<<"abouttosend"<<endl;		
-		if ((len = sendto(sockDscrptr, requestBuffer, strlen(requestBuffer) + 1, 0, (const struct sockaddr*) &sa, sizeof(sa))) < strlen(requestBuffer) + 1) {
+			cout<<"abouttosend "<< requestBuffer <<endl;		
+		if ((len = sendto(sockDscrptr, requestBuffer, strlen(requestBuffer) , 0, (const struct sockaddr*) &sa, sizeof(sa))) < strlen(requestBuffer)) {
 			cout<<"Send Failed. Sent Only " << len << " of " << strlen(requestBuffer) << endl;
 	}
 
@@ -116,6 +117,9 @@ int main (int argc, const char* argv[]) {
 			//receive the servers response and output it
 			recvfrom(sockDscrptr, responseBuffer, 1000, 0, NULL, NULL);
 			cout<<"Client received: " << responseBuffer << endl;
+		 }
+		else {
+			break;
 		}
 	}
 	close (sockDscrptr);
