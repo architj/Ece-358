@@ -15,6 +15,7 @@
 #include <signal.h>
 #include <sstream>
 #include <net/if.h>
+#include "mybind.c"
 
 using namespace std;
 
@@ -67,24 +68,16 @@ int main (int argc, char* argv[] )
 		exit(0);
 	}
 	#endif
-	
+
 	// define params for binding
 	struct sockaddr_in a, client;
-	a.sin_family = AF_INET;
-	a.sin_addr.s_addr = htonl(INADDR_ANY);
-	if( port !=0 )
-	{
-		a.sin_port = htons(port);
-	}
-	else 
-	{
-		a.sin_port = htons(0);
-	}
-
+       	a.sin_family = AF_INET;
+       	a.sin_addr.s_addr = htonl(INADDR_ANY);	
+	
 	socklen_t sockLength;
 	
 	// bind the socket 
-	if ( bind (sockDscrptr, (const struct sockaddr *)(&a), sizeof (a)) < 0) {
+	if ( mybind (sockDscrptr, &a) < 0) {
 		perror("bind");
 		exit(0);
 	}
@@ -117,11 +110,11 @@ int main (int argc, char* argv[] )
 			inet_ntop(AF_INET, &(((struct sockaddr_in *)(temp->ifa_addr))->sin_addr), ip, 256 );
 			struct sockaddr_in ifaSockAddr = *((struct sockaddr_in*) (temp->ifa_addr));
 			ifaSockAddr.sin_family = AF_INET;
-			int errno = getnameinfo(((struct sockaddr*) &ifaSockAddr), sizeof(ifaSockAddr), hostname, sizeof(hostname), NULL, 0, 0);
-			if( errno != 0)
+			int errNo = getnameinfo(((struct sockaddr*) &ifaSockAddr), sizeof(ifaSockAddr), hostname, sizeof(hostname), NULL, 0, 0);
+			if( errNo != 0)
 			{
 				// failure
-				printf(gai_strerror(errno));
+				printf(gai_strerror(errNo));
 				memcpy(hostname, ip, sizeof(ip) );
 			}
 			break;
@@ -196,7 +189,7 @@ int main (int argc, char* argv[] )
 			memset( &buf, 0, sizeof(buf) );
 			
 			// recieve messages
-			if( int errno = recvfrom(childSockDscrptr, buf, 256, 0, (struct sockaddr*)(&client), &sockLength ) > 0 )
+			if( recvfrom(childSockDscrptr, buf, 256, 0, (struct sockaddr*)(&client), &sockLength ) > 0 )
 			{
 				#if defined( UDP )
 				
